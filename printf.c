@@ -27,7 +27,7 @@ size_t ringbuffer_puts(struct Ringbuffer *rb, const char *buf, size_t len) {
 
 #include "stb_sprintf.h"
 
-// a little sugnature adapter
+// a little signature adapter
 static char *rb_putcb(char *buf, void *user, int len) {
     puts_t *callback = (puts_t *)user;
     size_t  ln       = len;  // explicit cast

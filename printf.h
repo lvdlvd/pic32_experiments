@@ -32,5 +32,6 @@ size_t ringbuffer_puts(struct Ringbuffer *rb, const char *buf, size_t len);
 typedef size_t puts_t(const char *buf, size_t len);
 
 // cbprintf() interprets fmt as a format string for the variable parameters and calls the callback to
-// copy the characters out, up to 32 at a time.
+// copy the characters out, up to 32 at a time.  When the callback returns less than len, printing
+// is aborted.
 int cbprintf(puts_t *callback, const char *fmt, ...) __attribute__((format(printf, 2, 3)));

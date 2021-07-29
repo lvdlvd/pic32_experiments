@@ -88,20 +88,47 @@ void delay(unsigned int count) {
 }
 
 void __attribute__((vector(_TIMER_2_VECTOR), interrupt(IPL2AUTO), nomips16)) Timer2_IRQ(void) {
-    IFS0CLR = _IFS0_T2IF_MASK;  // clear flag
+    IFS0CLR = _IFS0_T2IF_MASK;  // clear irq 7flag
 
     LATGINV = _LATG_LATG13_MASK;
 }
 
-void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL1AUTO), nomips16)) Timer4_IRQ(void) {
-    IFS0CLR = _IFS0_T4IF_MASK;  // clear flag
+void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Timer4_IRQ(void) {
+    IFS0CLR = _IFS0_T4IF_MASK;  // clear irq flag
 
     LATGINV = _LATG_LATG14_MASK;
 }
 
+
+
+// UART4 (TX only)
+void u4init(uint32_t baud) {
+
+    TRISAbits.TRISA12 = 0;        // output
+    RPA12R            = 0b00010;  // RPA12 -> UART4 TX
+    TRISDbits.TRISD3  = 1;        // input
+    U4RXR             = 0b1101;   // RPD3  -> UART4 RX
+
+    // When using the 1:1 PBCLK divisor, the user software should not read/write the peripheral SFRs in the SYSCLK cycle
+    // immediately following the instruction that clears the module’s ON bit.
+    U4MODE = 0;  // reset mode
+    _nop();     
+    U4STA             = 0;                                                              // reset status
+    U4BRG             = 60000000 / (16 * baud) - 1;                                     // APBclock is sysclk/2 = 60MHz
+    U4STAbits.UTXISEL = 2;                                                              // irq when queue is empty
+    U4STASET          = _U4STA_UTXEN_MASK;                                              // enable TX
+    IFS2CLR           = _IFS2_U4TXIF_MASK;                                              // clear any set irq
+    IPC16CLR          = _IPC16_U4TXIS_MASK | _IPC16_U4TXIP_MASK;                        // clear prio & subprio
+    IPC16SET          = (3 << _IPC16_U4TXIS_POSITION) | (3 << _IPC16_U4TXIP_POSITION);  // prio 3 (must match handler) subprio 3
+    U4MODESET         = _U4MODE_ON_MASK;                                              // on
+}
+
+
 static struct Ringbuffer u4_buf;
 
 void __attribute__((vector(_UART4_TX_VECTOR), interrupt(IPL3AUTO), nomips16)) UART4TX_IRQ(void) {
+    IFS2CLR = _IFS2_U4TXIF_MASK; // clear irq flag
+
     while (!ringbuffer_empty(&u4_buf) && !(U4STAbits.UTXBF)) {
         U4TXREG = get_tail(&u4_buf);
     }
@@ -110,7 +137,6 @@ void __attribute__((vector(_UART4_TX_VECTOR), interrupt(IPL3AUTO), nomips16)) UA
         IEC2CLR = _IEC2_U4TXIE_MASK;  // stop these interrupts
     }
 
-    IFS2CLR = _IFS2_U4TXIF_MASK;
     return;
 }
 
@@ -132,7 +158,7 @@ int main(void) {
     __builtin_mtc0(16, 0, (__builtin_mfc0(16, 0) | 0x3));  // CP0.K0 enable cached instruction pre-fetch
     CHECONbits.PFMWS = 3;                                  // prefetch 3 waitstates
     INTCONSET        = _INTCON_MVEC_MASK;
-    // PRISSbits.PRI7SS = 1;
+    PRISSbits.PRI7SS = 1;
 
     TRISGbits.TRISG12 = 0;
     TRISGbits.TRISG13 = 0;
@@ -141,50 +167,34 @@ int main(void) {
     LATGbits.LATG12 = 0;
     LATGbits.LATG13 = 0;
 
-    TRISAbits.TRISA12 = 0;        // output
-    RPA12R            = 0b00010;  // RPA12 -> UART4 TX
-    TRISDbits.TRISD3  = 1;        // input
-    U4RXR             = 0b1101;   // RPD3  -> UART4 RX
-
-    // UART4 (TX only)
-
-    U4MODE = 0;  // reset mode
-    _nop();      // When using the 1:1 PBCLK divisor, the user software should not read/write the peripheral SFRs in the SYSCLK cycle
-                 // immediately following the instruction that clears the module’s ON bit.
-    U4STA             = 0;                                                              // reset status
-    U4BRG             = 60000000 / (16 * 115200) - 1;                                   // APBclock is sysclk/2 = 60MHz
-    U4STAbits.UTXISEL = 2;                                                              // irq when queue is empty
-    U4STASET          = _U4STA_UTXEN_MASK;                                              // enable TX
-    IFS2CLR           = _IFS2_U4TXIF_MASK;                                              // clear any set irq
-    IPC16CLR          = _IPC16_U4TXIS_MASK | _IPC16_U4TXIP_MASK;                        // clear prio & subprio
-    IPC16SET          = (3 << _IPC16_U4TXIS_POSITION) | (3 << _IPC16_U4TXIP_POSITION);  // prio 3 (must match handler) subprio 3
-    U4MODESET         = _U4MODE_ON_MASK;                                                // on
-
+    u4init(115200);
+  
+  
     // TIMER 2/3
+    // Documentation says the IRQ should come out of the slave but this appears not to be true. 
 
     T3CON    = 0;                                                        // Reset T3 (slave)
     T2CON    = 0;                                                        // and T2 (master)
     T2CONSET = _T2CON_T32_MASK;                                          // enable 32 bit mode
     T2CONSET = 5 << _T2CON_TCKPS_POSITION;                               // prescaler 1<<5  = 32:  (120/2)MHz / 32 = 1875 KHz
-    PR2      = 1000000 - 1;                                              // 1Hz
+    PR2      = 1000000 - 1;                                              // 1.875Hz
     TMR2     = 0;                                                        // reset counter
-    IFS0CLR  = _IFS0_T2IF_MASK;                                          // clear flag
+    IFS0CLR  = _IFS0_T2IF_MASK;                                          // clear flag.
     IPC2CLR  = _IPC2_T2IS_MASK | _IPC2_T2IP_MASK;                        // clear prio & subprio
     IPC2SET  = (3 << _IPC2_T2IS_POSITION) | (2 << _IPC2_T2IP_POSITION);  // prio 2 (must match handler), subprio 3
     IEC0SET  = _IEC0_T2IE_MASK;                                          // enable irq
     T2CONSET = _T2CON_ON_MASK;                                           // enable timer
 
     // TIMER 4/5
-
-    T5CON    = 0;                                                        // Reset slave timer 5
+    T5CON    = 0;                                                        // Reset T5 (slave)
     T4CON    = 0;                                                        // reset master timer 4
     T4CONSET = _T4CON_T32_MASK;                                          // enable 32 bit mode
-    T4CONSET = 5 << _T3CON_TCKPS_POSITION;                               // prescaler 1<<5  = 32:  (120/2)MHz / 32 = 1875 KHz
-    PR4      = 1875000 - 1;                                              // 1.875Hz
+    T4CONSET = 5 << _T4CON_TCKPS_POSITION;                               // prescaler 1<<5  = 32:  (120/2)MHz / 32 = 1875 KHz
+    PR4      = 1875000 - 1;                                              // 1Hz
     TMR4     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T4IF_MASK;                                          // clear flag
     IPC4CLR  = _IPC4_T4IS_MASK | _IPC4_T4IP_MASK;                        // clear prio & subprio
-    IPC4SET  = (3 << _IPC4_T4IS_POSITION) | (1 << _IPC4_T4IP_POSITION);  // prio 1 (must match handler), subprio 3
+    IPC4SET  = (0 << _IPC4_T4IS_POSITION) | (7 << _IPC4_T4IP_POSITION);  // prio 7 (must match handler), subprio 0
     IEC0SET  = _IEC0_T4IE_MASK;                                          // enable irq
     T4CONSET = _T4CON_ON_MASK;                                           // enable timer
 
@@ -194,6 +204,7 @@ int main(void) {
         delay(6000000);
         cbprintf(u4puts, "ping %07d\n", i);
         //u4puts("boo", 3);
+        LATGINV = _LATG_LATG12_MASK;
     }
 
     return 0;
