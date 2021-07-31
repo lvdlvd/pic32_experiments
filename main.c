@@ -73,6 +73,9 @@
 #include <xc.h>
 
 #include "printf.h"
+#include "can.h"
+#include "fmtcan.h"
+
 
 #define LEDRED RPG12
 #define LEDGREEN RPG13
@@ -88,7 +91,7 @@ void delay(unsigned int count) {
 }
 
 void __attribute__((vector(_TIMER_2_VECTOR), interrupt(IPL2AUTO), nomips16)) Timer2_IRQ(void) {
-    IFS0CLR = _IFS0_T2IF_MASK;  // clear irq 7flag
+    IFS0CLR = _IFS0_T2IF_MASK;  // clear irq flag
 
     LATGINV = _LATG_LATG13_MASK;
 }
@@ -99,20 +102,17 @@ void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Tim
     LATGINV = _LATG_LATG14_MASK;
 }
 
-
-
 // UART4 (TX only)
 void u4init(uint32_t baud) {
-
     TRISAbits.TRISA12 = 0;        // output
-    RPA12R            = 0b00010;  // RPA12 -> UART4 TX
+    RPA12R            = 0b00010;  // RPA12 <- UART4 TX
     TRISDbits.TRISD3  = 1;        // input
     U4RXR             = 0b1101;   // RPD3  -> UART4 RX
 
     // When using the 1:1 PBCLK divisor, the user software should not read/write the peripheral SFRs in the SYSCLK cycle
     // immediately following the instruction that clears the module’s ON bit.
     U4MODE = 0;  // reset mode
-    _nop();     
+    _nop();
     U4STA             = 0;                                                              // reset status
     U4BRG             = 60000000 / (16 * baud) - 1;                                     // APBclock is sysclk/2 = 60MHz
     U4STAbits.UTXISEL = 2;                                                              // irq when queue is empty
@@ -120,14 +120,13 @@ void u4init(uint32_t baud) {
     IFS2CLR           = _IFS2_U4TXIF_MASK;                                              // clear any set irq
     IPC16CLR          = _IPC16_U4TXIS_MASK | _IPC16_U4TXIP_MASK;                        // clear prio & subprio
     IPC16SET          = (3 << _IPC16_U4TXIS_POSITION) | (3 << _IPC16_U4TXIP_POSITION);  // prio 3 (must match handler) subprio 3
-    U4MODESET         = _U4MODE_ON_MASK;                                              // on
+    U4MODESET         = _U4MODE_ON_MASK;                                                // on
 }
-
 
 static struct Ringbuffer u4_buf;
 
 void __attribute__((vector(_UART4_TX_VECTOR), interrupt(IPL3AUTO), nomips16)) UART4TX_IRQ(void) {
-    IFS2CLR = _IFS2_U4TXIF_MASK; // clear irq flag
+    IFS2CLR = _IFS2_U4TXIF_MASK;  // clear irq flag
 
     while (!ringbuffer_empty(&u4_buf) && !(U4STAbits.UTXBF)) {
         U4TXREG = get_tail(&u4_buf);
@@ -140,25 +139,29 @@ void __attribute__((vector(_UART4_TX_VECTOR), interrupt(IPL3AUTO), nomips16)) UA
     return;
 }
 
-size_t u4puts(const char* buf, size_t len) {
+size_t u4puts(const char *buf, size_t len) {
     size_t r = ringbuffer_puts(&u4_buf, buf, len);
+    // on overflow zap the buffer and leave a marker for the user that data was lost
     if (r < len) {
         ringbuffer_clear(&u4_buf);
         ringbuffer_puts(&u4_buf, "!OVFL!", 6);
     }
 
-    IEC2SET = _IEC2_U4TXIE_MASK; // start transmission if not already running
+    IEC2SET = _IEC2_U4TXIE_MASK;  // start transmission if not already running
     return r;
 }
 
-   
+
+// section 34.7.1 Transmit Message Buffer Format / 34.9 Receiving
+// 0..31 is the tx fifo, 32..63 is the rx
+static struct CanMsg can3fifo[64];
 
 
 int main(void) {
     __builtin_mtc0(16, 0, (__builtin_mfc0(16, 0) | 0x3));  // CP0.K0 enable cached instruction pre-fetch
     CHECONbits.PFMWS = 3;                                  // prefetch 3 waitstates
-    INTCONSET        = _INTCON_MVEC_MASK;
-    PRISSbits.PRI7SS = 1;
+    INTCONSET        = _INTCON_MVEC_MASK;                  // use vectored interrupts
+    PRISSbits.PRI7SS = 1;                                  // priority level 7 uses the shadow registers
 
     TRISGbits.TRISG12 = 0;
     TRISGbits.TRISG13 = 0;
@@ -168,15 +171,15 @@ int main(void) {
     LATGbits.LATG13 = 0;
 
     u4init(115200);
-  
-  
+    c3init(CAN_500KBd, can3fifo);
+
     // TIMER 2/3
-    // Documentation says the IRQ should come out of the slave but this appears not to be true. 
+    // Documentation says the IRQ should come out of the slave but this appears not to be true.
 
     T3CON    = 0;                                                        // Reset T3 (slave)
     T2CON    = 0;                                                        // and T2 (master)
     T2CONSET = _T2CON_T32_MASK;                                          // enable 32 bit mode
-    T2CONSET = 5 << _T2CON_TCKPS_POSITION;                               // prescaler 1<<5  = 32:  (120/2)MHz / 32 = 1875 KHz
+    T2CONSET = 5 << _T2CON_TCKPS_POSITION;                               // prescaler:  (120/2)MHz / (1<<5) = 1875 KHz
     PR2      = 1000000 - 1;                                              // 1.875Hz
     TMR2     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T2IF_MASK;                                          // clear flag.
@@ -187,9 +190,9 @@ int main(void) {
 
     // TIMER 4/5
     T5CON    = 0;                                                        // Reset T5 (slave)
-    T4CON    = 0;                                                        // reset master timer 4
+    T4CON    = 0;                                                        // and T4 (master)
     T4CONSET = _T4CON_T32_MASK;                                          // enable 32 bit mode
-    T4CONSET = 5 << _T4CON_TCKPS_POSITION;                               // prescaler 1<<5  = 32:  (120/2)MHz / 32 = 1875 KHz
+    T4CONSET = 5 << _T4CON_TCKPS_POSITION;                               // prescaler: (120/2)MHz / (1<<5) = 1875 KHz
     PR4      = 1875000 - 1;                                              // 1Hz
     TMR4     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T4IF_MASK;                                          // clear flag
@@ -200,10 +203,29 @@ int main(void) {
 
     __builtin_enable_interrupts();
 
+    cbprintf(u4puts, "Booted.\n");
+
+
     for (int i = 0;; i++) {
         delay(6000000);
         cbprintf(u4puts, "ping %07d\n", i);
-        //u4puts("boo", 3);
+        // u4puts("boo", 3);
+
+        struct CanMsg *msg = c3_tx_head();
+        if (msg) {
+            uint8_t buf[] = { i, i>>8, i>>16, i>>24 };
+            mkCanMsg(msg, 0x100, 4, buf);
+            c3_tx_push();
+        }
+
+        msg = c3_rx_tail();
+        if (msg) {
+            char buf[50];
+            size_t len = can_fmt(buf, sizeof buf, canMsgHeader(msg), canMsgLen(msg), msg->data);
+            c3_rx_pull();
+            u4puts(buf, len);
+        }
+
         LATGINV = _LATG_LATG12_MASK;
     }
 
