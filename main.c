@@ -11,9 +11,9 @@
 #pragma config USERID    = 0xFFFF  // Enter Hexadecimal value (Enter Hexadecimal value)
 #pragma config FUSBIDIO2 = ON      // USB2 USBID Selection (USBID pin is controlled by the USB2 module)
 #pragma config FVBUSIO2  = ON      // USB2 VBUSON Selection bit (VBUSON pin is controlled by the USB2 module)
-#pragma config PGL1WAY   = ON      // Permission Group Lock One Way Configuration bit (Allow multiple reconfigurations)
-#pragma config PMDL1WAY  = ON      // Peripheral Module Disable Configuration (Allow multiple reconfigurations)
-#pragma config IOL1WAY   = ON      // Peripheral Pin Select Configuration (Allow multiple reconfigurations)
+#pragma config PGL1WAY   = OFF      // Permission Group Lock One Way Configuration bit (Allow multiple reconfigurations)
+#pragma config PMDL1WAY  = OFF     // Peripheral Module Disable Configuration (Allow multiple reconfigurations)
+#pragma config IOL1WAY   = OFF      // Peripheral Pin Select Configuration (Allow multiple reconfigurations)
 #pragma config FUSBIDIO1 = ON      // USB1 USBID Selection (USBID pin is controlled by the USB1 module)
 #pragma config FVBUSIO1  = ON      // USB2 VBUSON Selection bit (VBUSON pin is controlled by the USB1 module)
 
@@ -72,10 +72,9 @@
 
 #include <xc.h>
 
-#include "printf.h"
 #include "can.h"
 #include "fmtcan.h"
-
+#include "printf.h"
 
 #define LEDRED RPG12
 #define LEDGREEN RPG13
@@ -93,7 +92,7 @@ void delay(unsigned int count) {
 void __attribute__((vector(_TIMER_2_VECTOR), interrupt(IPL2AUTO), nomips16)) Timer2_IRQ(void) {
     IFS0CLR = _IFS0_T2IF_MASK;  // clear irq flag
 
-    LATGINV = _LATG_LATG13_MASK;
+//    LATGINV = _LATG_LATG13_MASK;
 }
 
 void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Timer4_IRQ(void) {
@@ -103,12 +102,7 @@ void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Tim
 }
 
 // UART4 (TX only)
-void u4init(uint32_t baud) {
-    TRISAbits.TRISA12 = 0;        // output
-    RPA12R            = 0b00010;  // RPA12 <- UART4 TX
-    TRISDbits.TRISD3  = 1;        // input
-    U4RXR             = 0b1101;   // RPD3  -> UART4 RX
-
+void uart4init(uint32_t baud) {
     // When using the 1:1 PBCLK divisor, the user software should not read/write the peripheral SFRs in the SYSCLK cycle
     // immediately following the instruction that clears the module’s ON bit.
     U4MODE = 0;  // reset mode
@@ -151,10 +145,90 @@ size_t u4puts(const char *buf, size_t len) {
     return r;
 }
 
-
 // section 34.7.1 Transmit Message Buffer Format / 34.9 Receiving
 // 0..31 is the tx fifo, 32..63 is the rx
 static struct CanMsg can3fifo[64];
+
+
+static inline uintptr_t KVA_TO_PA(void *v) { return (uintptr_t)v & 0x1fffffffUL; }
+
+void can3init(enum CANBaudRate bps, struct CanMsg *fifos) {
+
+    C3CONSET = _IC3CON_ON_MASK;  // switch on the module
+    
+    C3CONbits.REQOP = 0b100;  // config mode
+    while (C3CONbits.OPMOD != 0b100)
+        _nop();
+
+    C3INTCLR = 0xffff0000; // clear all irq masks
+
+    C3CFGbits.SEG2PHTS = 1;    // freely programmable
+    C3CFGbits.SAM      = 0;    // sample 1x/3x
+    C3CFGbits.SEG2PH   = 4;    // 5Tq
+    C3CFGbits.SEG1PH   = 4;    // 5Tq
+    C3CFGbits.PRSEG    = 3;    // 4Tq
+    C3CFGbits.SJW      = 1;    // sync adjust up to 2 quanta
+    C3CFGbits.BRP      = bps;  // 1+4+5+5 = 15 Tq per bit, so for 1Mbps we want 60/(1+brp) = 15 MHz
+
+    C3FIFOBA = KVA_TO_PA(fifos);
+
+    C3FIFOCON0bits.FSIZE = 31;
+    C3FIFOCON0bits.TXEN  = 1;  // fifo 0 is tx
+    C3FIFOINT0CLR = 0xffff0000;
+
+    C3FIFOCON1bits.FSIZE = 31;
+    C3FIFOCON1bits.TXEN  = 0;  // fifo 1 is rx
+    C3FIFOINT1CLR = 0xffff0000;
+
+    C3RXM0              = 0;  // clear mask 0: everything matches
+    C3RXF0              = 0;  // filter is don't care
+    C3FLTCON0bits.MSEL0 = 0;  // filter 0 use mask 0
+    C3FLTCON0bits.FSEL0 = 1;  // filter 0 receive in fifo 1
+    C3FLTCON0SET        = _C3FLTCON0_FLTEN0_MASK;
+
+    C3CONbits.REQOP = 2; // loopback  
+//    while (C3CONbits.OPMOD != 0)
+//        _nop();
+}
+
+void can4init(enum CANBaudRate bps, struct CanMsg *fifos) {
+
+    C4CONSET = _IC4CON_ON_MASK;  // switch on the module
+    
+    C4CONbits.REQOP = 0b100;  // config mode
+    while (C4CONbits.OPMOD != 0b100)
+        _nop();
+
+    C4INTCLR = 0xffff0000; // clear all irq masks
+
+    C4CFGbits.SEG2PHTS = 1;    // freely programmable
+    C4CFGbits.SAM      = 0;    // sample 1x/3x
+    C4CFGbits.SEG2PH   = 4;    // 5Tq
+    C4CFGbits.SEG1PH   = 4;    // 5Tq
+    C4CFGbits.PRSEG    = 3;    // 4Tq
+    C4CFGbits.SJW      = 1;    // sync adjust up to 2 quanta
+    C4CFGbits.BRP      = bps;  // 1+4+5+5 = 15 Tq per bit, so for 1Mbps we want 60/(1+brp) = 15 MHz
+
+    C4FIFOBA = KVA_TO_PA(fifos);
+
+    C4FIFOCON0bits.FSIZE = 31;
+    C4FIFOCON0bits.TXEN  = 1;  // fifo 0 is tx
+    C4FIFOINT0CLR = 0xffff0000;
+
+    C4FIFOCON1bits.FSIZE = 31;
+    C4FIFOCON1bits.TXEN  = 0;  // fifo 1 is rx
+    C4FIFOINT1CLR = 0xffff0000;
+
+    C4RXM0              = 0;  // clear mask 0: everything matches
+    C4RXF0              = 0;  // filter is don't care
+    C4FLTCON0bits.MSEL0 = 0;  // filter 0 use mask 0
+    C4FLTCON0bits.FSEL0 = 1;  // filter 0 receive in fifo 1
+    C4FLTCON0SET        = _C4FLTCON0_FLTEN0_MASK;
+
+    C4CONbits.REQOP = 0; // loopback  
+//    while (C3CONbits.OPMOD != 0)
+//        _nop();
+}
 
 
 int main(void) {
@@ -163,15 +237,42 @@ int main(void) {
     INTCONSET        = _INTCON_MVEC_MASK;                  // use vectored interrupts
     PRISSbits.PRI7SS = 1;                                  // priority level 7 uses the shadow registers
 
+    // ANSELGCLR = 7<<12;
     TRISGbits.TRISG12 = 0;
     TRISGbits.TRISG13 = 0;
     TRISGbits.TRISG14 = 0;
 
-    LATGbits.LATG12 = 0;
-    LATGbits.LATG13 = 0;
+    __builtin_enable_interrupts();
 
-    u4init(115200);
-    c3init(CAN_500KBd, can3fifo);
+    // UART4
+    // ANSELACLR = 1<<12;        
+    // ANSELDCLR = 1<<3;        
+    TRISAbits.TRISA12 = 0;        // output
+    TRISDbits.TRISD3  = 1;        // input
+    RPA12R            = 0b00010;  // RPA12 <- UART4 TX
+    U4RXR             = 0b1101;   // RPD3  -> UART4 RX
+    uart4init(115200);
+
+    // // CAN3
+    // ANSELCCLR = 1<<15;
+    // ANSELGCLR = 1<<6;      // disable G6 analog input
+    // TRISCbits.TRISC15 = 0; // output
+    // TRISGbits.TRISG6 = 1;  // input
+    // RPC15R            = 0b01100;  // PRC15 <- C3TX
+    // C3RXR             = 0b1010;   // RPG6 -> C3RX
+    // can3init(3, can3fifo);
+
+    // C4TX RPB1
+    // C4RX RPC2
+    ANSELBCLR = 1<<1;
+    ANSELCCLR = 1<<2;
+    TRISBbits.TRISB1 = 0; // output
+    TRISCbits.TRISC2 = 1; // input
+    RPB1R = 0b01100;
+    C4RXR = 0b0110;
+    can4init(3, can3fifo);
+
+    LATGSET = _LATG_LATG12_MASK;
 
     // TIMER 2/3
     // Documentation says the IRQ should come out of the slave but this appears not to be true.
@@ -201,32 +302,32 @@ int main(void) {
     IEC0SET  = _IEC0_T4IE_MASK;                                          // enable irq
     T4CONSET = _T4CON_ON_MASK;                                           // enable timer
 
-    __builtin_enable_interrupts();
-
     cbprintf(u4puts, "Booted.\n");
-
 
     for (int i = 0;; i++) {
         delay(6000000);
         cbprintf(u4puts, "ping %07d\n", i);
         // u4puts("boo", 3);
 
-        struct CanMsg *msg = c3_tx_head();
+        struct CanMsg *msg = c4_tx_head();
         if (msg) {
-            uint8_t buf[] = { i, i>>8, i>>16, i>>24 };
-            mkCanMsg(msg, 0x100, 4, buf);
-            c3_tx_push();
+            uint8_t buf[] = {i, i >> 8, i >> 16, i >> 24};
+            mkCanMsg(msg, can_header(0x100, 0), 4, buf);
+            c4_tx_push();
+
+            LATGINV = _LATG_LATG12_MASK;
+
         }
 
-        msg = c3_rx_tail();
+        msg = c4_rx_tail();
         if (msg) {
-            char buf[50];
-            size_t len = can_fmt(buf, sizeof buf, canMsgHeader(msg), canMsgLen(msg), msg->data);
-            c3_rx_pull();
-            u4puts(buf, len);
-        }
+            char   buf[50];
+            can_fmt(buf, sizeof buf, canMsgHeader(msg), canMsgLen(msg), msg->data);
+            c4_rx_pull();
+            cbprintf(u4puts, "%s\n", buf);
 
-        LATGINV = _LATG_LATG12_MASK;
+            LATGINV = _LATG_LATG13_MASK;            
+        }
     }
 
     return 0;

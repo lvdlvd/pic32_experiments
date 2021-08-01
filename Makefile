@@ -35,5 +35,7 @@ depend:
 	makedepend -Y. -w150 *.c
 # DO NOT DELETE
 
-main.o: printf.h
+can.o: can.h
+fmtcan.o: can.h fmtcan.h
+main.o: can.h fmtcan.h printf.h
 printf.o: printf.h stb_sprintf.h
