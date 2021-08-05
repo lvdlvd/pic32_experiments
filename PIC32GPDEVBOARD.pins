@@ -26,35 +26,35 @@
 #      code to TODO use ADC....
 #
 ## Pin  Name 	Signal Type Alias  Initial     # comments
-# 1     RG15 	G15     O    nSDD_CS  HIGH                                              
-# 2 	VDD                                                                       
-# 3 	PMD5
-# 4 	PMD6
-# 5 	PMD7
-# 6 	RD1     D1      O    DATA_EN                                                                  
-# 7 	RD2     D2      O    GFX_RESET                                                                  
+#1     	RG15 	G15     O    nSDD_CS  HIGH                                              
+# 2		VDD                                                                       
+#3 		PMD5
+#4 		PMD6
+#5 		PMD7
+#6 		RD1     D1      O    DATA_EN                                                                  
+#7 		RD2     D2      O    GFX_RESET                                                                  
 8 		RPD3	U4RX 	I                       # ubus header 1 rx
 9 		RPD4	D4 	 	I 		ub1_INT
 10  	RPG6 	G6 		I       ub1_PWM			# also wired to C3RX transceiver
-# 11  	SCL1 
-# 12  	SDA1 
-# 13  	MCLR                                    # global reset pin                                 
+11  	SCL1 
+12  	SDA1 
+13  	MCLR                                    # global reset pin                                 
 14  	RPG9 	SDO6 	O        				# ubus header 1 spi
 # 15  	VSS                                                                       
 # 16  	VDD                                                                       
-# 17  	RG10  	AN22	A 	LCD_PWM                                                          
-# 18  	RE8		AN21	A                                                            
-# 19  	RE9		AN20	A                                                            
+#17  	RG10  	G10		O 	LCD_PWM     LOW                                                     
+#18  	RE8		AN21	A                                                            
+#19  	RE9		AN20	A                                                            
 20  	RPA12	U4TX 	O                       # ubus header 1 tx
 21  	RPA11   A11    	O   ub1_RST 	LOW
 22  	RPA0	AN0 	A 	ub1_AN
 23  	RPA1 	SCK6    O           			# ubus header 1 spi
 24  	RPB0  	SDI6    I           			# ubus header 1 spi
 25  	RPB1 	C4TX 	O
-# 26 	PGC1
-# 27  	PGD1
-# 28	RF9                                                 
-# 29	RF10                                                
+#26 	PGC1
+#27  	PGD1
+#28		RF9                                                 
+#29		RF10                                                
 # 30	AVDD                                                                      
 # 31	AVSS                                                              
 32  	RPC0 	SS6     O           			# ubus header 1 spi

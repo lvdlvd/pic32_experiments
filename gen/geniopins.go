@@ -138,6 +138,15 @@ func (d *PinDef) GPIO() string {
 	return parts[1] + parts[2]
 }
 
+var portstate ['G' - 'A' + 1]struct {
+	Analog    uint16
+	Tristate  uint16
+	Latch     uint16 // initial state
+	OpenDrain uint16
+	Pullup    uint16
+	Pulldown  uint16
+}
+
 func main() {
 
 	flag.Parse()
@@ -268,8 +277,90 @@ func main() {
 		log.Fatalf("%d errors. Please fix and re-run.", errs)
 	}
 
-	for _, v := range defs {
-		fmt.Println(*v, v.Port(), v.Bit(), v.IsGPIO())
+	portused := map[byte]bool{}
+
+	for _, def := range defs {
+		//fmt.Println(*def, def.Port(), def.Bit(), def.IsGPIO())
+
+		bit := def.Bit()
+		if bit < 0 {
+			continue
+		}
+		port := def.Port()[0] - 'A'
+		portused[port] = true
+		switch def.Type {
+		case ANALOGIN:
+			portstate[port].Analog |= 1 << bit
+			portstate[port].Tristate |= 1 << bit
+		case DIGITALIN:
+			portstate[port].Tristate |= 1 << bit
+		case DIGITALINPULLUP:
+			portstate[port].Tristate |= 1 << bit
+			portstate[port].Pullup |= 1 << bit
+		case DIGITALINPULLDOWN:
+			portstate[port].Tristate |= 1 << bit
+			portstate[port].Pulldown |= 1 << bit
+		case DIGITALOUTOPENDRAIN:
+			portstate[port].OpenDrain |= 1 << bit
+			fallthrough
+		case DIGITALOUT:
+			if def.Initial && def.InitialHigh {
+				portstate[port].Latch |= 1 << bit
+			}
+		}
 	}
 
+	fmt.Println("// port initialisation")
+	fmt.Println("inline void initIOPins(void) {")
+
+	for port := byte(0); port <= 'G'-'A'; port++ {
+		if !portused[port] {
+			continue
+		}
+		fmt.Printf("\tANSEL%c\t= 0b%016b;\n", 'A'+port, portstate[port].Analog)
+		fmt.Printf("\tCNPUE%c\t= 0b%016b;\n", 'A'+port, portstate[port].Pullup)
+		fmt.Printf("\tCNPDE%c\t= 0b%016b;\n", 'A'+port, portstate[port].Pulldown)
+		fmt.Printf("\tODC%c  \t= 0b%016b;\n", 'A'+port, portstate[port].OpenDrain)
+		fmt.Printf("\tLAT%c  \t= 0b%016b;\n", 'A'+port, portstate[port].Latch)
+		fmt.Printf("\tTRIS%c \t= 0b%016b;\n", 'A'+port, portstate[port].Tristate)
+		fmt.Println()
+	}
+
+	fmt.Println("\t// output pin<-peripheral mappings")
+
+	for _, def := range defs {
+		if def.IsGPIO() {
+			continue
+		}
+		switch def.Type {
+		case DIGITALOUT, DIGITALOUTOPENDRAIN:
+			v := remap[def.GPIO()][def.Signal]
+			fmt.Printf("RP%sR = 0b%04b; // %s\n", def.GPIO(), v, def.Signal)
+		}
+	}
+
+	fmt.Println("\n\t// input peripheral->pin mappings")
+
+	for _, def := range defs {
+		if def.IsGPIO() {
+			continue
+		}
+		switch def.Type {
+		case DIGITALIN, DIGITALINPULLUP, DIGITALINPULLDOWN:
+			v := remap[def.Signal][def.GPIO()]
+			fmt.Printf("%sR = 0b%05b; // %s\n", def.Signal, v, def.GPIO())
+
+		}
+	}
+	fmt.Println("}")
+
+	fmt.Println("\n// masks for PORTx and LATx[SET|CLR|INV]")
+
+	fmt.Print("enum {")
+	for _, def := range defs {
+		if def.Alias != "" {
+			fmt.Printf("\n  %s_%s = 0x%04x, // %s", def.Port(), strings.ToUpper(def.Alias), 1<<def.Bit(), def.GPIO())
+		}
+	}
+	fmt.Println("\n};")
 }
