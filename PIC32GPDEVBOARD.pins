@@ -13,19 +13,19 @@
 #   <n>  RPxy   <peripheral>  I/O[D]  
 #      generates code to map the peripheral to the pin
 #   
-#   <n>  R[P]Xy  Xy  I[PU/D]  Nickname
+#   <n>  R[P]Xy  Xy  I[PU/D]  Alias
 #      generates code to configure pin Xy for input
-#      also generates a X_NICKNAME mask for use when reading PORTX
+#      also generates a X_ALIAS mask for use when reading PORTX
 #
-#   <n>  R[P]Xy  Xy  O[D]  Nickname [State]
+#   <n>  R[P]Xy  Xy  O[D]  Alias [State]
 #      generates code to configure pin Xy for output, and optionally set to state
-#      also generates a X_NICKNAME mask for use when writing LAT[SET/CLR/INV]X
+#      also generates a X_ALIAS mask for use when writing LATX[SET/CLR/INV]
 #
-#   <n>  ANyy  ANyy  A  Nickname
+#   <n>  R[P]Xy  ANyy  A  Alias
 #      generates code to configure pin ANyy for analog input, plus
 #      code to TODO use ADC....
 #
-## Pin  Name 	Signal Type Nickname  Initial
+## Pin  Name 	Signal Type Alias  Initial     # comments
 # 1     RG15 	G15     O    nSDD_CS  HIGH                                              
 # 2 	VDD                                                                       
 # 3 	PMD5
@@ -34,8 +34,8 @@
 # 6 	RD1     D1      O    DATA_EN                                                                  
 # 7 	RD2     D2      O    GFX_RESET                                                                  
 8 		RPD3	U4RX 	I                       # ubus header 1 rx
-9 		RPD4	D4 	 	I 		ub1INT
-10  	RPG6 	G6 		I       ub1PWM			# also wired to C3RX transceiver
+9 		RPD4	D4 	 	I 		ub1_INT
+10  	RPG6 	G6 		I       ub1_PWM			# also wired to C3RX transceiver
 # 11  	SCL1 
 # 12  	SDA1 
 # 13  	MCLR                                    # global reset pin                                 
@@ -43,14 +43,14 @@
 # 15  	VSS                                                                       
 # 16  	VDD                                                                       
 # 17  	RG10  	AN22	A 	LCD_PWM                                                          
-# 18  	AN21/RE8                                                            
-# 19  	AN20/RE9                                                            
+# 18  	RE8		AN21	A                                                            
+# 19  	RE9		AN20	A                                                            
 20  	RPA12	U4TX 	O                       # ubus header 1 tx
-21  	RPA11   A11    	O   ub1RST 	LOW
-22  	RPA0	AN0 	A 	ub1AN
+21  	RPA11   A11    	O   ub1_RST 	LOW
+22  	RPA0	AN0 	A 	ub1_AN
 23  	RPA1 	SCK6    O           			# ubus header 1 spi
 24  	RPB0  	SDI6    I           			# ubus header 1 spi
-25  	RPB1 	C4TX O
+25  	RPB1 	C4TX 	O
 # 26 	PGC1
 # 27  	PGD1
 # 28	RF9                                                 
@@ -58,7 +58,7 @@
 # 30	AVDD                                                                      
 # 31	AVSS                                                              
 32  	RPC0 	SS6     O           			# ubus header 1 spi
-# 33	RPC1 	AN7     A   ub2AN               # also X32 header REFCLKO2
+# 33	RPC1 	AN7     A   ub2_AN               # also X32 header REFCLKO2
 34 		RPC2    C4RX                            # also ubus header 2 RST
 # 35 	RC11    C11 O 	VBUSON                                        
 # 36	VSS
@@ -95,7 +95,7 @@
 67  	RPA15	U6RX      I                     # uart/i2c<->usb
 # 68  	VBAT
 # 69  	USBID1
-70  	RPB6 	SCK2      O                    	# ubus header 2
+70  	SCK2 	      	                    	# ubus header 2
 # 71  	RPC10
 72  	RPB7	SDO2      O                    	# ubus header 2
 # 73  	SOSCI

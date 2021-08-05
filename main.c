@@ -145,90 +145,8 @@ size_t u4puts(const char *buf, size_t len) {
     return r;
 }
 
-// section 34.7.1 Transmit Message Buffer Format / 34.9 Receiving
 // 0..31 is the tx fifo, 32..63 is the rx
-static struct CanMsg can3fifo[64];
-
-
-static inline uintptr_t KVA_TO_PA(void *v) { return (uintptr_t)v & 0x1fffffffUL; }
-
-void can3init(enum CANBaudRate bps, struct CanMsg *fifos) {
-
-    C3CONSET = _IC3CON_ON_MASK;  // switch on the module
-    
-    C3CONbits.REQOP = 0b100;  // config mode
-    while (C3CONbits.OPMOD != 0b100)
-        _nop();
-
-    C3INTCLR = 0xffff0000; // clear all irq masks
-
-    C3CFGbits.SEG2PHTS = 1;    // freely programmable
-    C3CFGbits.SAM      = 0;    // sample 1x/3x
-    C3CFGbits.SEG2PH   = 4;    // 5Tq
-    C3CFGbits.SEG1PH   = 4;    // 5Tq
-    C3CFGbits.PRSEG    = 3;    // 4Tq
-    C3CFGbits.SJW      = 1;    // sync adjust up to 2 quanta
-    C3CFGbits.BRP      = bps;  // 1+4+5+5 = 15 Tq per bit, so for 1Mbps we want 60/(1+brp) = 15 MHz
-
-    C3FIFOBA = KVA_TO_PA(fifos);
-
-    C3FIFOCON0bits.FSIZE = 31;
-    C3FIFOCON0bits.TXEN  = 1;  // fifo 0 is tx
-    C3FIFOINT0CLR = 0xffff0000;
-
-    C3FIFOCON1bits.FSIZE = 31;
-    C3FIFOCON1bits.TXEN  = 0;  // fifo 1 is rx
-    C3FIFOINT1CLR = 0xffff0000;
-
-    C3RXM0              = 0;  // clear mask 0: everything matches
-    C3RXF0              = 0;  // filter is don't care
-    C3FLTCON0bits.MSEL0 = 0;  // filter 0 use mask 0
-    C3FLTCON0bits.FSEL0 = 1;  // filter 0 receive in fifo 1
-    C3FLTCON0SET        = _C3FLTCON0_FLTEN0_MASK;
-
-    C3CONbits.REQOP = 2; // loopback  
-//    while (C3CONbits.OPMOD != 0)
-//        _nop();
-}
-
-void can4init(enum CANBaudRate bps, struct CanMsg *fifos) {
-
-    C4CONSET = _IC4CON_ON_MASK;  // switch on the module
-    
-    C4CONbits.REQOP = 0b100;  // config mode
-    while (C4CONbits.OPMOD != 0b100)
-        _nop();
-
-    C4INTCLR = 0xffff0000; // clear all irq masks
-
-    C4CFGbits.SEG2PHTS = 1;    // freely programmable
-    C4CFGbits.SAM      = 0;    // sample 1x/3x
-    C4CFGbits.SEG2PH   = 4;    // 5Tq
-    C4CFGbits.SEG1PH   = 4;    // 5Tq
-    C4CFGbits.PRSEG    = 3;    // 4Tq
-    C4CFGbits.SJW      = 1;    // sync adjust up to 2 quanta
-    C4CFGbits.BRP      = bps;  // 1+4+5+5 = 15 Tq per bit, so for 1Mbps we want 60/(1+brp) = 15 MHz
-
-    C4FIFOBA = KVA_TO_PA(fifos);
-
-    C4FIFOCON0bits.FSIZE = 31;
-    C4FIFOCON0bits.TXEN  = 1;  // fifo 0 is tx
-    C4FIFOINT0CLR = 0xffff0000;
-
-    C4FIFOCON1bits.FSIZE = 31;
-    C4FIFOCON1bits.TXEN  = 0;  // fifo 1 is rx
-    C4FIFOINT1CLR = 0xffff0000;
-
-    C4RXM0              = 0;  // clear mask 0: everything matches
-    C4RXF0              = 0;  // filter is don't care
-    C4FLTCON0bits.MSEL0 = 0;  // filter 0 use mask 0
-    C4FLTCON0bits.FSEL0 = 1;  // filter 0 receive in fifo 1
-    C4FLTCON0SET        = _C4FLTCON0_FLTEN0_MASK;
-
-    C4CONbits.REQOP = 0; // loopback  
-//    while (C3CONbits.OPMOD != 0)
-//        _nop();
-}
+static struct CanMsg can4fifo[64];
 
 
 int main(void) {
@@ -253,15 +171,6 @@ int main(void) {
     U4RXR             = 0b1101;   // RPD3  -> UART4 RX
     uart4init(115200);
 
-    // // CAN3
-    // ANSELCCLR = 1<<15;
-    // ANSELGCLR = 1<<6;      // disable G6 analog input
-    // TRISCbits.TRISC15 = 0; // output
-    // TRISGbits.TRISG6 = 1;  // input
-    // RPC15R            = 0b01100;  // PRC15 <- C3TX
-    // C3RXR             = 0b1010;   // RPG6 -> C3RX
-    // can3init(3, can3fifo);
-
     // C4TX RPB1
     // C4RX RPC2
     ANSELBCLR = 1<<1;
@@ -270,7 +179,7 @@ int main(void) {
     TRISCbits.TRISC2 = 1; // input
     RPB1R = 0b01100;
     C4RXR = 0b0110;
-    can4init(3, can3fifo);
+    can4init(CAN_1MBd, can4fifo);
 
     LATGSET = _LATG_LATG12_MASK;
 

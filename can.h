@@ -32,6 +32,7 @@ inline uint32_t can_header_from29(uint32_t id29) { return ((id29 & (0x7ff << 18)
 // to29 extracts the 29 bit id_a+id_b from a header.
 inline uint32_t can_header_to29(uint32_t header) { return ((header >> 2) & (0x7ff << 18)) | (header & 0x3ffff); }
 
+// section 34.7.1 Transmit Message Buffer Format / 34.9 Receiving
 struct CanMsg {
     uint32_t id;
     uint32_t eid;
@@ -55,19 +56,19 @@ inline uint32_t canMsgHeader(struct CanMsg *msg) {
 
 inline size_t canMsgLen(struct CanMsg *msg) { return msg->eid & 0xf; }
 
-// Sysclk is 120, 12 quanta/bit -> 10MBps/2*(1+div)
+// Sysclk is 120, 15 quanta/bit -> 10MBps/2*(1+div)
 enum CANBaudRate {
-    CAN_1MBd   = 4,
-    CAN_500KBd = 9,
-    CAN_250KBd = 19,
-    CAN_125KBd = 39,
-    CAN_83KBd  = 59,
+    CAN_1MBd   = 3,
+    CAN_500KBd = 7,
+    CAN_250KBd = 15,
+    CAN_125KBd = 31,
+    CAN_83KBd  = 47,
 };
 
-// void can1init(enum CANBaudRate bps, struct CanMsg* fifos);
-// void can2init(enum CANBaudRate bps, struct CanMsg* fifos);
-void can3init(enum CANBaudRate bps, struct CanMsg *fifos);
-// void can4init(enum CANBaudRate bps, struct CanMsg* fifos);
+void can1init(enum CANBaudRate bps, struct CanMsg* fifos);
+void can2init(enum CANBaudRate bps, struct CanMsg* fifos);
+// void can3init(enum CANBaudRate bps, struct CanMsg *fifos);
+void can4init(enum CANBaudRate bps, struct CanMsg* fifos);
 
 inline void *PA_TO_KVA1(uintptr_t pa) { return (void *)(pa | 0xa0000000UL); }
 
