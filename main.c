@@ -72,17 +72,13 @@
 
 #include <xc.h>
 
+#include "PIC32GPDEVBOARD.h"
+
 #include "can.h"
 #include "fmtcan.h"
 #include "printf.h"
 
-#define LEDRED RPG12
-#define LEDGREEN RPG13
-#define LEDYELLOW RPG14
-
-#define SWITCH1 RG11
-#define SWITCH2 RF13
-#define SWITCH3 RF12
+extern inline void initIOPins(void);
 
 void delay(unsigned int count) {
     while (--count)
@@ -98,50 +94,50 @@ void __attribute__((vector(_TIMER_2_VECTOR), interrupt(IPL2AUTO), nomips16)) Tim
 void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Timer4_IRQ(void) {
     IFS0CLR = _IFS0_T4IF_MASK;  // clear irq flag
 
-    LATGINV = _LATG_LATG14_MASK;
+    LATGINV = G_LEDYLW;
 }
 
-// UART4 (TX only)
-void uart4init(uint32_t baud) {
+// UART6 (TX only)
+void uart6init(uint32_t baud) {
     // When using the 1:1 PBCLK divisor, the user software should not read/write the peripheral SFRs in the SYSCLK cycle
     // immediately following the instruction that clears the module’s ON bit.
-    U4MODE = 0;  // reset mode
+    U6MODE = 0;  // reset mode
     _nop();
-    U4STA             = 0;                                                              // reset status
-    U4BRG             = 60000000 / (16 * baud) - 1;                                     // APBclock is sysclk/2 = 60MHz
-    U4STAbits.UTXISEL = 2;                                                              // irq when queue is empty
-    U4STASET          = _U4STA_UTXEN_MASK;                                              // enable TX
-    IFS2CLR           = _IFS2_U4TXIF_MASK;                                              // clear any set irq
-    IPC16CLR          = _IPC16_U4TXIS_MASK | _IPC16_U4TXIP_MASK;                        // clear prio & subprio
-    IPC16SET          = (3 << _IPC16_U4TXIS_POSITION) | (3 << _IPC16_U4TXIP_POSITION);  // prio 3 (must match handler) subprio 3
-    U4MODESET         = _U4MODE_ON_MASK;                                                // on
+    U6STA             = 0;                                                              // reset status
+    U6BRG             = 60000000 / (16 * baud) - 1;                                     // APBclock is sysclk/2 = 60MHz
+    U6STAbits.UTXISEL = 2;                                                              // irq when queue is empty
+    U6STASET          = _U6STA_UTXEN_MASK;                                              // enable TX
+    IFS5CLR           = _IFS5_U6TXIF_MASK;                                              // clear any set irq
+    IPC41CLR          = _IPC41_U6TXIS_MASK | _IPC41_U6TXIP_MASK;                        // clear prio & subprio
+    IPC41SET          = (3 << _IPC41_U6TXIS_POSITION) | (3 << _IPC41_U6TXIP_POSITION);  // prio 3 (must match handler) subprio 3
+    U6MODESET         = _U6MODE_ON_MASK;                                                // on
 }
 
-static struct Ringbuffer u4_buf;
+static struct Ringbuffer u6_buf;
 
-void __attribute__((vector(_UART4_TX_VECTOR), interrupt(IPL3AUTO), nomips16)) UART4TX_IRQ(void) {
-    IFS2CLR = _IFS2_U4TXIF_MASK;  // clear irq flag
+void __attribute__((vector(_UART6_TX_VECTOR), interrupt(IPL3AUTO), nomips16)) UART6TX_IRQ(void) {
+    IFS5CLR = _IFS5_U6TXIF_MASK;  // clear irq flag
 
-    while (!ringbuffer_empty(&u4_buf) && !(U4STAbits.UTXBF)) {
-        U4TXREG = get_tail(&u4_buf);
+    while (!ringbuffer_empty(&u6_buf) && !(U6STAbits.UTXBF)) {
+        U6TXREG = get_tail(&u6_buf);
     }
 
-    if (ringbuffer_empty(&u4_buf)) {
-        IEC2CLR = _IEC2_U4TXIE_MASK;  // stop these interrupts
+    if (ringbuffer_empty(&u6_buf)) {
+        IEC5CLR = _IEC5_U6TXIE_MASK;  // stop these interrupts
     }
 
     return;
 }
 
-size_t u4puts(const char *buf, size_t len) {
-    size_t r = ringbuffer_puts(&u4_buf, buf, len);
+size_t u6puts(const char *buf, size_t len) {
+    size_t r = ringbuffer_puts(&u6_buf, buf, len);
     // on overflow zap the buffer and leave a marker for the user that data was lost
     if (r < len) {
-        ringbuffer_clear(&u4_buf);
-        ringbuffer_puts(&u4_buf, "!OVFL!", 6);
+        ringbuffer_clear(&u6_buf);
+        ringbuffer_puts(&u6_buf, "!OVFL!", 6);
     }
 
-    IEC2SET = _IEC2_U4TXIE_MASK;  // start transmission if not already running
+    IEC5SET = _IEC5_U6TXIE_MASK;  // start transmission if not already running
     return r;
 }
 
@@ -155,30 +151,12 @@ int main(void) {
     INTCONSET        = _INTCON_MVEC_MASK;                  // use vectored interrupts
     PRISSbits.PRI7SS = 1;                                  // priority level 7 uses the shadow registers
 
-    // ANSELGCLR = 7<<12;
-    TRISGbits.TRISG12 = 0;
-    TRISGbits.TRISG13 = 0;
-    TRISGbits.TRISG14 = 0;
+    initIOPins();
 
     __builtin_enable_interrupts();
 
-    // UART4
-    // ANSELACLR = 1<<12;        
-    // ANSELDCLR = 1<<3;        
-    TRISAbits.TRISA12 = 0;        // output
-    TRISDbits.TRISD3  = 1;        // input
-    RPA12R            = 0b00010;  // RPA12 <- UART4 TX
-    U4RXR             = 0b1101;   // RPD3  -> UART4 RX
-    uart4init(115200);
+    uart6init(115200);
 
-    // C4TX RPB1
-    // C4RX RPC2
-    ANSELBCLR = 1<<1;
-    ANSELCCLR = 1<<2;
-    TRISBbits.TRISB1 = 0; // output
-    TRISCbits.TRISC2 = 1; // input
-    RPB1R = 0b01100;
-    C4RXR = 0b0110;
     can4init(CAN_1MBd, can4fifo);
 
     LATGSET = _LATG_LATG12_MASK;
@@ -211,11 +189,11 @@ int main(void) {
     IEC0SET  = _IEC0_T4IE_MASK;                                          // enable irq
     T4CONSET = _T4CON_ON_MASK;                                           // enable timer
 
-    cbprintf(u4puts, "Booted.\n");
+    cbprintf(u6puts, "Booted.\n");
 
     for (int i = 0;; i++) {
         delay(6000000);
-        cbprintf(u4puts, "ping %07d\n", i);
+        cbprintf(u6puts, "ping %07d\n", i);
         // u4puts("boo", 3);
 
         struct CanMsg *msg = c4_tx_head();
@@ -224,8 +202,7 @@ int main(void) {
             mkCanMsg(msg, can_header(0x100, 0), 4, buf);
             c4_tx_push();
 
-            LATGINV = _LATG_LATG12_MASK;
-
+            LATGINV = G_LEDRED;
         }
 
         msg = c4_rx_tail();
@@ -233,9 +210,9 @@ int main(void) {
             char   buf[50];
             can_fmt(buf, sizeof buf, canMsgHeader(msg), canMsgLen(msg), msg->data);
             c4_rx_pull();
-            cbprintf(u4puts, "%s\n", buf);
+            cbprintf(u6puts, "%s\n", buf);
 
-            LATGINV = _LATG_LATG13_MASK;            
+            LATGINV = G_LEDGRN;            
         }
     }
 
