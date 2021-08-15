@@ -72,13 +72,13 @@
 
 #include <xc.h>
 
-#include "PIC32GPDEVBOARD.h"
-
 #include "can.h"
 #include "fmtcan.h"
 #include "printf.h"
 
-extern inline void initIOPins(void);
+#include "PIC32GPDEVBOARD.h"
+extern inline void initIOPins(void);  // force compiler to emit definition here
+
 
 void delay(unsigned int count) {
     while (--count)
