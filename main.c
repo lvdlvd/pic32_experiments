@@ -142,7 +142,8 @@ size_t u6puts(const char *buf, size_t len) {
 }
 
 // 0..31 is the tx fifo, 32..63 is the rx
-static struct CanMsg can4fifo[64];
+static struct CanMsg can1fifo[64];
+static struct CanMsg can2fifo[64];
 
 
 int main(void) {
@@ -157,7 +158,8 @@ int main(void) {
 
     uart6init(115200);
 
-    can4init(CAN_1MBd, can4fifo);
+    can1init(CAN_1MBd, can1fifo);
+    can2init(CAN_1MBd, can2fifo);
 
     LATGSET = _LATG_LATG12_MASK;
 
@@ -196,20 +198,23 @@ int main(void) {
         cbprintf(u6puts, "ping %07d\n", i);
         // u4puts("boo", 3);
 
-        struct CanMsg *msg = c4_tx_head();
+        struct CanMsg *msg = c1_tx_head();
         if (msg) {
             uint8_t buf[] = {i, i >> 8, i >> 16, i >> 24};
             mkCanMsg(msg, can_header(0x100, 0), 4, buf);
-            c4_tx_push();
+            c1_tx_push();
 
             LATGINV = G_LEDRED;
         }
 
-        msg = c4_rx_tail();
-        if (msg) {
+        for(;;) {
+            msg = c2_rx_tail();
+            if (!msg)
+                break;
+
             char   buf[50];
             can_fmt(buf, sizeof buf, canMsgHeader(msg), canMsgLen(msg), msg->data);
-            c4_rx_pull();
+            c2_rx_pull();
             cbprintf(u6puts, "%s\n", buf);
 
             LATGINV = G_LEDGRN;            
