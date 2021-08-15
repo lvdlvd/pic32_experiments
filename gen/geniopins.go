@@ -343,20 +343,7 @@ func main() {
 		fmt.Println()
 	}
 
-	fmt.Println("\t// output pin<-peripheral mappings")
-
-	for _, def := range defs {
-		if def.IsGPIO() {
-			continue
-		}
-		switch def.Type {
-		case DIGITALOUT, DIGITALOUTOPENDRAIN:
-			v := remap[def.GPIO()][def.Signal]
-			fmt.Printf("\tRP%sR\t= 0b%05b;\t// %s\n", def.GPIO(), v, def.Signal)
-		}
-	}
-
-	fmt.Println("\n\t// input peripheral->pin mappings")
+	fmt.Println("\t// input peripheral->pin mappings")
 
 	for _, def := range defs {
 		if def.IsGPIO() {
@@ -369,6 +356,20 @@ func main() {
 
 		}
 	}
+
+	fmt.Println("\n\t// output pin<-peripheral mappings")
+
+	for _, def := range defs {
+		if def.IsGPIO() {
+			continue
+		}
+		switch def.Type {
+		case DIGITALOUT, DIGITALOUTOPENDRAIN:
+			v := remap[def.GPIO()][def.Signal]
+			fmt.Printf("\tRP%sR\t= 0b%05b;\t// %s\n", def.GPIO(), v, def.Signal)
+		}
+	}
+
 	fmt.Println("}")
 
 	fmt.Println("\n// masks for PORTx and LATx[SET|CLR|INV]")

@@ -26,6 +26,14 @@ inline void initIOPins(void) {
 	LATGSET  	= 0b1000000000000000;
 	TRISGCLR 	= 0b1111011000000000;
 
+	// input peripheral->pin mappings
+	U4RXR	= 0b1101;	// D3
+	SDI6R	= 0b0010;	// B0
+	C1RXR	= 0b1000;	// E14
+	C2RXR	= 0b1100;	// E1
+	SDI2R	= 0b1101;	// A14
+	U6RXR	= 0b1101;	// A15
+
 	// output pin<-peripheral mappings
 	RPG9R	= 0b10001;	// SDO6
 	RPA12R	= 0b00010;	// U4TX
@@ -37,14 +45,6 @@ inline void initIOPins(void) {
 	RPE0R	= 0b01100;	// C1TX
 	RPB7R	= 0b00100;	// SDO2
 	RPB9R	= 0b00100;	// SS2
-
-	// input peripheral->pin mappings
-	U4RXR	= 0b1101;	// D3
-	SDI6R	= 0b0010;	// B0
-	C1RXR	= 0b1000;	// E14
-	C2RXR	= 0b1100;	// E1
-	SDI2R	= 0b1101;	// A14
-	U6RXR	= 0b1101;	// A15
 }
 
 // masks for PORTx and LATx[SET|CLR|INV]

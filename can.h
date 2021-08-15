@@ -56,7 +56,7 @@ inline uint32_t canMsgHeader(struct CanMsg *msg) {
 
 inline size_t canMsgLen(struct CanMsg *msg) { return msg->eid & 0xf; }
 
-// Sysclk is 120, 15 quanta/bit -> 10MBps/2*(1+div)
+// Sysclk is 120, 15 quanta/bit -> 8MBps/2*(1+div)
 enum CANBaudRate {
     CAN_1MBd   = 3,
     CAN_500KBd = 7,
