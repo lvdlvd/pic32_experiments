@@ -168,7 +168,7 @@ int main(void) {
     T2CON    = 0;                                                        // and T2 (master)
     T2CONSET = _T2CON_T32_MASK;                                          // enable 32 bit mode
     T2CONSET = 5 << _T2CON_TCKPS_POSITION;                               // prescaler:  (120/2)MHz / (1<<5) = 1875 KHz
-    PR2      = 1000000 - 1;                                              // 1.875Hz
+    PR2      = 1875000 - 1;                                              // 1.875Hz
     TMR2     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T2IF_MASK;                                          // clear flag.
     IPC2CLR  = _IPC2_T2IS_MASK | _IPC2_T2IP_MASK;                        // clear prio & subprio
@@ -181,7 +181,7 @@ int main(void) {
     T4CON    = 0;                                                        // and T4 (master)
     T4CONSET = _T4CON_T32_MASK;                                          // enable 32 bit mode
     T4CONSET = 5 << _T4CON_TCKPS_POSITION;                               // prescaler: (120/2)MHz / (1<<5) = 1875 KHz
-    PR4      = 1875000 - 1;                                              // 1Hz
+    PR4      = 1000000 - 1;                                              // 1Hz
     TMR4     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T4IF_MASK;                                          // clear flag
     IPC4CLR  = _IPC4_T4IS_MASK | _IPC4_T4IP_MASK;                        // clear prio & subprio
