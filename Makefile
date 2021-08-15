@@ -28,6 +28,9 @@ $(APPLICATION).elf: $(OBJS)
 %.hex: %.elf
 	$(BIN2HEX) $<
 
+%.h: %.pins
+	go run gen/*.go < $< > $@
+
 clean:
 	rm -f *~ *.o *.hex *.elf
 
@@ -37,5 +40,5 @@ depend:
 
 can.o: can.h
 fmtcan.o: can.h fmtcan.h
-main.o: can.h fmtcan.h printf.h
+main.o: PIC32GPDEVBOARD.h can.h fmtcan.h printf.h
 printf.o: printf.h stb_sprintf.h
