@@ -1,8 +1,8 @@
 # PIC32MK1024GPE100 Development Board DS70005316A
 #
 # lines beginning with '#' are ignored
-#  
-#   type: 
+#
+#   type:
 #      A   analog input
 #      I   digital input
 #      IPU    with pullup
@@ -10,9 +10,9 @@
 #      O   output
 #      OD     with open drain
 #
-#   <n>  RPxy   <peripheral>  I/O[D]  
+#   <n>  RPxy   <peripheral>  I/O[D]
 #      generates code to map the peripheral to the pin
-#   
+#
 #   <n>  R[P]Xy  Xy  I[PU/D]  Alias
 #      generates code to configure pin Xy for input
 #      also generates a X_ALIAS mask for use when reading PORTX
@@ -26,25 +26,25 @@
 #      code to TODO use ADC....
 #
 ## Pin  Name 	Signal Type Alias  Initial     # comments
-#1     	RG15 	G15     O    nSDD_CS  HIGH                                              
-# 2		VDD                                                                       
+1     	RG15 	G15     O    nSDD_CS  HIGH
+2		VDD
 #3 		PMD5
-#4 		PMD6
+# 		PMD6
 #5 		PMD7
-#6 		RD1     D1      O    DATA_EN                                                                  
-#7 		RD2     D2      O    GFX_RESET                                                                  
+6 		RD1     D1      O    DATA_EN
+7 		RD2     D2      O    GFX_RESET
 8 		RPD3	U4RX 	I                       # ubus header 1 rx
 9 		RPD4	D4 	 	I 		ub1_INT
 10  	RPG6 	G6 		I       ub1_PWM			# also wired to C3RX transceiver
-11  	SCL1 
-12  	SDA1 
-13  	MCLR                                    # global reset pin                                 
+11  	SCL1
+12  	SDA1
+13  	MCLR                                    # global reset pin
 14  	RPG9 	SDO6 	O        				# ubus header 1 spi
-# 15  	VSS                                                                       
-# 16  	VDD                                                                       
-#17  	RG10  	G10		O 	LCD_PWM     LOW                                                     
-#18  	RE8		AN21	A                                                            
-#19  	RE9		AN20	A                                                            
+15  	VSS
+16  	VDD
+17  	RG10  	G10		O 	LCD_PWM     LOW
+18  	RE8		AN21	A
+19  	RE9		AN20	A
 20  	RPA12	U4TX 	O                       # ubus header 1 tx
 21  	RPA11   A11    	O   ub1_RST 	LOW
 22  	RPA0	AN0 	A 	ub1_AN
@@ -53,29 +53,29 @@
 25  	RPB1 	C4TX 	O
 #26 	PGC1
 #27  	PGD1
-#28		RF9                                                 
-#29		RF10                                                
-# 30	AVDD                                                                      
-# 31	AVSS                                                              
+#28		RF9
+#29		RF10
+30		AVDD
+31		AVSS
 32  	RPC0 	SS6     O           			# ubus header 1 spi
-# 33	RPC1 	AN7     A   ub2_AN               # also X32 header REFCLKO2
+33		RPC1 	AN7     A   ub2_AN               # also X32 header REFCLKO2
 34 		RPC2    C4RX                            # also ubus header 2 RST
-# 35 	RC11    C11 O 	VBUSON                                        
-# 36	VSS
-# 37	VDD
+# 35 	RC11    C11 O 	VBUSON
+36		VSS
+37		VDD
 38  	RG11	G11		IPD 	SWITCH1
 39  	RF13	F13		IPD   	SWITCH3
 40  	RF12	F12		IPD   	SWITCH2
-# 41  	SDA4                   					# ubus header 1 and uart/i2c<->usb 
-# 42  	SCL4                   					# ubus header 1 and uart/i2c<->usb 
+41  	SDA4                   					# ubus header 1 and uart/i2c<->usb
+42  	SCL4                   					# ubus header 1 and uart/i2c<->usb
 43 		RPE14	C1RX I
 44 		RPE15	C2TX O
-# 45  	VSS
-# 46  	VDD
-# 47  	RD14 D14 O nOC_CLR HIGH
+45  	VSS
+46  	VDD
+47  	RD14 D14 O nOC_CLR HIGH
 # 48  	RD15 D15 I USB_OC
-# 49  	SDA2                                    # ubus header 2 i2c
-# 50  	SCL2                                    # ubus header 2 i2c
+49  	SDA2                                    # ubus header 2 i2c
+50  	SCL2                                    # ubus header 2 i2c
 51  	RPA4 	U6TX	O 						# uart/i2c<->usb
 52  	RPE0 	C1TX	O
 53  	RPE1 	C2RX	I
@@ -88,8 +88,8 @@
 # 60  	D2+
 # 61  	RF5 	F5		O? 		QT_INT
 # 62  	VDD
-# 63  	OSCI
-# 64  	OSCO     								# NOTE conflicts with RPC15/C3TX
+63  	OSCI
+64  	OSCO     								# NOTE conflicts with RPC15/C3TX
 # 65  	VSS
 66  	RA14 	SDI2      I                     # ubus header 2
 67  	RPA15	U6RX      I                     # uart/i2c<->usb
@@ -100,7 +100,7 @@
 72  	RPB7	SDO2      O                    	# ubus header 2
 # 73  	SOSCI
 # 74  	SOSCO
-# 75  	VSS                                                                      
+# 75  	VSS
 76  	RPB9 	SS2       O                    	# ubus header 2
 77  	RPC6 	U3TX                            # ubus header 2
 78  	RPC7	U3RX                            # ubus header 2
@@ -110,8 +110,8 @@
 # 82 	PMRD
 # 83 	PMD14
 # 84 	PMD15
-# 85  	VSS                                                                      
-# 86  	VDD
+85  	VSS
+86  	VDD
 # 87 	PMD11
 # 88 	PMD10
 # 89 	PMD9

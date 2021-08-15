@@ -147,6 +147,15 @@ var portstate ['G' - 'A' + 1]struct {
 	Pulldown  uint16
 }
 
+func contains(i int, set []int) bool {
+	for _, v := range set {
+		if i == v {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 
 	flag.Parse()
@@ -154,10 +163,10 @@ func main() {
 	if validpins[*fPIC] == nil {
 		log.Fatalf("Invalid PIC model specified: %q", *fPIC)
 	}
-	vp := map[string]int{}
+	vp := map[string][]int{}
 	for i, v := range validpins[*fPIC] {
 		for _, vv := range strings.Split(v, "/") {
-			vp[vv] = i + 1
+			vp[vv] = append(vp[vv], i+1)
 		}
 	}
 
@@ -205,10 +214,10 @@ func main() {
 			Name: fields[1],
 		}
 
-		if n, ok := vp[def.Name]; !ok || n != def.Pin {
+		if n, ok := vp[def.Name]; !ok || !contains(def.Pin, n) {
 			log.Printf("line %d:%q not a valid name for pin %d", ln, def.Name, def.Pin)
 			if ok {
-				log.Printf("line %d: (%q is a valid name for pin %d)", ln, def.Name, n)
+				log.Printf("line %d: (%q is a valid name for pins %d)", ln, def.Name, n)
 			}
 			errs++
 			continue
@@ -249,7 +258,7 @@ func main() {
 			case DIGITALOUT, DIGITALOUTOPENDRAIN:
 				if _, ok := remap[def.GPIO()][def.Signal]; !ok {
 					log.Printf("line %d: no mapping of %q to %q", ln, def.Signal, def.GPIO())
-					if vp[def.Signal] == def.Pin {
+					if contains(def.Pin, vp[def.Signal]) {
 						log.Printf("line %d: (however %q is a valid name for pin %d without remapping)", ln, def.Signal, def.Pin)
 					}
 					errs++
@@ -259,7 +268,7 @@ func main() {
 				if _, ok := remap[def.Signal][def.GPIO()]; !ok {
 					log.Printf("line %d: no mapping of %q to %q", ln, def.GPIO(), def.Signal)
 					errs++
-					if vp[def.Signal] == def.Pin {
+					if contains(def.Pin, vp[def.Signal]) {
 						log.Printf("line %d: (however %q is a valid name for pin %d without remapping)", ln, def.Signal, def.Pin)
 					}
 				}
