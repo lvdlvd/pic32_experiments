@@ -8,8 +8,8 @@ APPLICATION := $(shell basename $(CURDIR))
 ARCH_FLAGS      = -mprocessor=32MK1024GPE100
 WARN_FLAGS      = -Werror -Wfatal-errors -Wall -Wextra -Wunsafe-loop-optimizations -Wdouble-promotion -Wundef
 DEBUG_FLAGS     = -DNDEBUG
-CFLAGS          = -O2 $(ARCH_FLAGS) $(WARN_FLAGS) $(DEBUG_FLAGS)
-LDFLAGS         = $(ARCH_FLAGS) $(WARN_FLAGS) $(DEBUG_FLAGS)
+CFLAGS          = -g -O2 $(ARCH_FLAGS) $(WARN_FLAGS) $(DEBUG_FLAGS)
+LDFLAGS         = $(ARCH_FLAGS) $(WARN_FLAGS) $(DEBUG_FLAGS) # -Wl,-gc-sections,-Map,main.map -Wl,--cref
 
 default:$(APPLICATION).hex
 

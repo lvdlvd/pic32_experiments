@@ -11,9 +11,9 @@
 #pragma config USERID    = 0xFFFF  // Enter Hexadecimal value (Enter Hexadecimal value)
 #pragma config FUSBIDIO2 = ON      // USB2 USBID Selection (USBID pin is controlled by the USB2 module)
 #pragma config FVBUSIO2  = ON      // USB2 VBUSON Selection bit (VBUSON pin is controlled by the USB2 module)
-#pragma config PGL1WAY   = OFF      // Permission Group Lock One Way Configuration bit (Allow multiple reconfigurations)
+#pragma config PGL1WAY   = OFF     // Permission Group Lock One Way Configuration bit (Allow multiple reconfigurations)
 #pragma config PMDL1WAY  = OFF     // Peripheral Module Disable Configuration (Allow multiple reconfigurations)
-#pragma config IOL1WAY   = OFF      // Peripheral Pin Select Configuration (Allow multiple reconfigurations)
+#pragma config IOL1WAY   = OFF     // Peripheral Pin Select Configuration (Allow multiple reconfigurations)
 #pragma config FUSBIDIO1 = ON      // USB1 USBID Selection (USBID pin is controlled by the USB1 module)
 #pragma config FVBUSIO1  = ON      // USB2 VBUSON Selection bit (VBUSON pin is controlled by the USB1 module)
 
@@ -79,7 +79,6 @@
 #include "PIC32GPDEVBOARD.h"
 extern inline void initIOPins(void);  // force compiler to emit definition here
 
-
 void delay(unsigned int count) {
     while (--count)
         asm("nop");
@@ -88,7 +87,7 @@ void delay(unsigned int count) {
 void __attribute__((vector(_TIMER_2_VECTOR), interrupt(IPL2AUTO), nomips16)) Timer2_IRQ(void) {
     IFS0CLR = _IFS0_T2IF_MASK;  // clear irq flag
 
-//    LATGINV = _LATG_LATG13_MASK;
+    //...
 }
 
 void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Timer4_IRQ(void) {
@@ -99,10 +98,7 @@ void __attribute__((vector(_TIMER_4_VECTOR), interrupt(IPL7AUTO), nomips16)) Tim
 
 // UART6 (TX only)
 void uart6init(uint32_t baud) {
-    // When using the 1:1 PBCLK divisor, the user software should not read/write the peripheral SFRs in the SYSCLK cycle
-    // immediately following the instruction that clears the module’s ON bit.
-    U6MODE = 0;  // reset mode
-    _nop();
+    U6MODE            = 0;                                                              // reset mode
     U6STA             = 0;                                                              // reset status
     U6BRG             = 60000000 / (16 * baud) - 1;                                     // APBclock is sysclk/2 = 60MHz
     U6STAbits.UTXISEL = 2;                                                              // irq when queue is empty
@@ -145,7 +141,6 @@ size_t u6puts(const char *buf, size_t len) {
 static struct CanMsg can1fifo[64];
 static struct CanMsg can2fifo[64];
 
-
 int main(void) {
     __builtin_mtc0(16, 0, (__builtin_mfc0(16, 0) | 0x3));  // CP0.K0 enable cached instruction pre-fetch
     CHECONbits.PFMWS = 3;                                  // prefetch 3 waitstates
@@ -161,7 +156,7 @@ int main(void) {
     can1init(CAN_1MBd, can1fifo);
     can2init(CAN_1MBd, can2fifo);
 
-    LATGSET = _LATG_LATG12_MASK;
+    LATGSET = G_LEDRED;
 
     // TIMER 2/3
     // Documentation says the IRQ should come out of the slave but this appears not to be true.
@@ -170,7 +165,7 @@ int main(void) {
     T2CON    = 0;                                                        // and T2 (master)
     T2CONSET = _T2CON_T32_MASK;                                          // enable 32 bit mode
     T2CONSET = 5 << _T2CON_TCKPS_POSITION;                               // prescaler:  (120/2)MHz / (1<<5) = 1875 KHz
-    PR2      = 1875000 - 1;                                              // 1.875Hz
+    PR2      = 1875000 - 1;                                              // 1Hz
     TMR2     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T2IF_MASK;                                          // clear flag.
     IPC2CLR  = _IPC2_T2IS_MASK | _IPC2_T2IP_MASK;                        // clear prio & subprio
@@ -183,7 +178,7 @@ int main(void) {
     T4CON    = 0;                                                        // and T4 (master)
     T4CONSET = _T4CON_T32_MASK;                                          // enable 32 bit mode
     T4CONSET = 5 << _T4CON_TCKPS_POSITION;                               // prescaler: (120/2)MHz / (1<<5) = 1875 KHz
-    PR4      = 1000000 - 1;                                              // 1Hz
+    PR4      = 1000000 - 1;                                              // 1.875Hz
     TMR4     = 0;                                                        // reset counter
     IFS0CLR  = _IFS0_T4IF_MASK;                                          // clear flag
     IPC4CLR  = _IPC4_T4IS_MASK | _IPC4_T4IP_MASK;                        // clear prio & subprio
@@ -193,9 +188,14 @@ int main(void) {
 
     cbprintf(u6puts, "Booted.\n");
 
+    T7CONbits.T32   = 1;  // 32 bit mode enabled.
+    T7CONbits.TCKPS = 1;  // PB5 clock with prescaler of 1
+    T7CONbits.ON    = 1;
+
     for (int i = 0;; i++) {
         delay(6000000);
-        cbprintf(u6puts, "ping %07d\n", i);
+
+        cbprintf(u6puts, "ping %07d %d\n", i, TMR7);
         // u4puts("boo", 3);
 
         struct CanMsg *msg = c1_tx_head();
@@ -207,19 +207,84 @@ int main(void) {
             LATGINV = G_LEDRED;
         }
 
-        for(;;) {
+        for (;;) {
             msg = c2_rx_tail();
             if (!msg)
                 break;
 
-            char   buf[50];
+            char buf[50];
             can_fmt(buf, sizeof buf, canMsgHeader(msg), canMsgLen(msg), msg->data);
             c2_rx_pull();
             cbprintf(u6puts, "%s\n", buf);
 
-            LATGINV = G_LEDGRN;            
+            LATGINV = G_LEDGRN;
         }
     }
 
     return 0;
+}
+
+//  Exception handler
+
+static size_t exception_puts(const char *buf, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        while (!U6STAbits.TRMT) {
+            _nop();
+        }
+        U6TXREG = buf[i];
+    }
+    return len;
+}
+
+static const char *exc_str[] = {
+        "interrupt",  // IRQ = 0,
+        "unknown1",
+        "unknown2",
+        "unknown3",
+        "address error exception (load or ifetch)",  //     AdEL = 4,
+        "address error exception (store)",           //   AdES,
+        "bus error (ifetch)",                        //   IBE,
+        "bus error (load/store)",                    //     DBE,
+        "syscall",                                   //     Sys,
+        "breakpoint",                                //    Bp,
+        "reserved instruction",                      //      RI,
+        "coprocessor unusable",                      //   CpU,
+        "arithmetic overflow",                       //   Overflow,
+        "trap (possible divide by zero)",            //     Trap,
+        "unknown14",
+        "unknown15",
+        "implementation specific 1",  //   IS1 = 16,
+        "CorExtend Unuseable",        //   CEU,
+        "coprocessor 2",              //    C2E
+};
+
+// this function overrides the normal _weak_ generic handler
+void __attribute__((noreturn)) _general_exception_handler(void) {
+    uint32_t code;
+    uint32_t addr;
+
+    asm volatile("mfc0 %0,$13" : "=r"(code));
+    asm volatile("mfc0 %0,$14" : "=r"(addr));
+
+    code &= 0xff;
+    code >>= 2;
+    const char* s = "UNKNOWN";
+    if (code < sizeof exc_str) {
+        s = exc_str[code];
+    }
+
+    cbprintf(exception_puts, "EXCEPTION %x %s @%x\n\n", code, s, addr);
+
+#if 0
+    SYSKEY = 0x00000000; //write invalid key to force lock
+    SYSKEY = 0xAA996655; //write key1 to SYSKEY
+    SYSKEY = 0x556699AA; //write key2 to SYSKEY
+    // OSCCON is now unlocked
+    /* set SWRST bit to arm reset */
+    RSWRSTSET = 1;
+    /* read RSWRST register to trigger reset */
+    _exception_code = RSWRST;
+#endif
+
+    for (;;) {}
 }

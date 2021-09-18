@@ -24,6 +24,7 @@ size_t ringbuffer_puts(struct Ringbuffer *rb, const char *buf, size_t len) {
 #define STB_SPRINTF_MIN 32
 #define STB_SPRINTF_NOFLOAT
 #define STB_SPRINTF_IMPLEMENTATION
+#define STB_SPRINTF_NOUNALIGNED
 
 #include "stb_sprintf.h"
 
