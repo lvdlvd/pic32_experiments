@@ -1,8 +1,14 @@
 /*
 	Geniopins reads a pin definition file on stdin,
-	validates and outputs C code
+	validates and outputs C code.
 
- lines beginning with '#' are ignored
+ Build with the command
+
+	go build -o gen *.go
+
+ The character '#' starts a comment, ignored to end-of-line
+
+ Significant lines are of the following types:
 
    type:
       A   analog input
