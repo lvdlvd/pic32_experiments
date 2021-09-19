@@ -3,6 +3,9 @@ package main
 /* PIC32MK GP/MC Family Datasheet DS60001402G
    page 247..250 TABLE 13-1: INPUT PIN SELECTION
 
+also PIC32MK GPK/MCM with CAN FD Family Datasheet DS60001519E
+   page 253..256 (identical)
+
    <signal>R = <pin>
 */
 
@@ -87,6 +90,9 @@ var imux = []struct {
 
 /*
   page 252..255 TABLE 13-2: OUTPUT PIN SELECTION
+
+also
+  page 258..261 in the GPK/MCM manual
 
 	RP<pin>R <-  <signal>
 */
