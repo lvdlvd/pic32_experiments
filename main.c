@@ -79,6 +79,54 @@
 #include "PIC32GPDEVBOARD.h"
 extern inline void initIOPins(void);  // force compiler to emit definition here
 
+// DS60001145U PIC32 Flash Programming Specification p.69 
+// Table C11 PIC32MK GENERAL PURPOSE AND MOTOR CONTROL (GP/MC) FAMILY DEVICE IDS
+static const struct devid2str_t {
+    uint16_t id; // middle part
+    const char* str; 
+} PIC32MKdevid2str[] = {
+  /*0x16201053*/ { 0x6201, "1024MCF100" },
+  /*0x16202053*/ { 0x6202, "1024MCF064" },
+  /*0x16204053*/ { 0x6204, "0512MCF100" },
+  /*0x16205053*/ { 0x6205, "0512MCF064" },
+  /*0x16207053*/ { 0x6207, "1024GPE100" },
+  /*0x16208053*/ { 0x6208, "1024GPE064" },
+  /*0x1620A053*/ { 0x620A, "0512GPE100" },
+  /*0x1620B053*/ { 0x620B, "0512GPE064" },
+  /*0x1620D053*/ { 0x620D, "1024GPD100" },
+  /*0x1620E053*/ { 0x620E, "1024GPD064" },
+  /*0x16210053*/ { 0x6210, "0512GPD100" },
+  /*0x16211053*/ { 0x6211, "0512GPD064" },
+  /*0x08B01053*/ { 0x8B01, "1024MCM100" },
+  /*0x08B02053*/ { 0x8B02, "1024MCM064" },
+  /*0x08B04053*/ { 0x8B04, "0512MCM100" },
+  /*0x08B05053*/ { 0x8B05, "0512MCM064" },
+  /*0x08B07053*/ { 0x8B07, "1024GPL100" },
+  /*0x08B08053*/ { 0x8B08, "1024GPL064" },
+  /*0x08B0A053*/ { 0x8B0A, "0512GPL100" },
+  /*0x08B0B053*/ { 0x8B0B, "0512GPL064" },
+  /*0x08B0D053*/ { 0x8B0D, "1024GPK100" },
+  /*0x08B0E053*/ { 0x8B0E, "1024GPK064" },
+  /*0x08B10053*/ { 0x8B10, "0512GPK100" },
+  /*0x08B11053*/ { 0x8B11, "0512GPK064" },
+  /*0x06300053*/ { 0x6300, "0512MCH064" },
+  /*0x06301053*/ { 0x6301, "0512MCH048" },
+  /*0x06302053*/ { 0x6302, "0512MCH040" },
+  /*0x06304053*/ { 0x6304, "0256MCH064" },
+  /*0x06305053*/ { 0x6305, "0256MCH048" },
+  /*0x06306053*/ { 0x6306, "0256MCH040" },
+  /*0x06308053*/ { 0x6308, "0512GPG064" },
+  /*0x06309053*/ { 0x6309, "0512GPG048" },
+  /*0x0630A053*/ { 0x630A, "0512GPG040" },
+  /*0x0630C053*/ { 0x630C, "0256GPG064" },
+  /*0x0630D053*/ { 0x630D, "0256GPG048" },
+  /*0x0630E053*/ { 0x630E, "0256GPG040" },
+    {0, 0},
+};
+
+
+
+
 void delay(unsigned int count) {
     while (--count)
         asm("nop");
@@ -186,7 +234,14 @@ int main(void) {
     IEC0SET  = _IEC0_T4IE_MASK;                                          // enable irq
     T4CONSET = _T4CON_ON_MASK;                                           // enable timer
 
-    cbprintf(u6puts, "Booted.\n");
+    for (const struct devid2str_t* p = PIC32MKdevid2str; p->id; ++p) {
+        if ( ((DEVID >> 12)&0xffff) == p->id) {
+           cbprintf(u6puts, "PIC32MK%s ", p->str);
+        }
+    }
+    cbprintf(u6puts, "(0x%x) v%d\n", (DEVID & _DEVID_DEVID_MASK) >> _DEVID_DEVID_POSITION, (DEVID & _DEVID_VER_MASK) >> _DEVID_VER_POSITION);
+    cbprintf(u6puts, "SERIAL %08x:%08x:%08x:%08x\n", DEVSN0,DEVSN1,DEVSN2,DEVSN3);
+
 
     T7CONbits.T32   = 1;  // 32 bit mode enabled.
     T7CONbits.TCKPS = 1;  // PB5 clock with prescaler of 1
@@ -288,3 +343,7 @@ void __attribute__((noreturn)) _general_exception_handler(void) {
 
     for (;;) {}
 }
+
+
+
+
