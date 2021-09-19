@@ -82,7 +82,7 @@ extern inline void initIOPins(void);  // force compiler to emit definition here
 // DS60001145U PIC32 Flash Programming Specification p.69 
 // Table C11 PIC32MK GENERAL PURPOSE AND MOTOR CONTROL (GP/MC) FAMILY DEVICE IDS
 static const struct devid2str_t {
-    uint16_t id; // middle part
+    uint16_t id; // devid >> 12
     const char* str; 
 } PIC32MKdevid2str[] = {
   /*0x16201053*/ { 0x6201, "1024MCF100" },

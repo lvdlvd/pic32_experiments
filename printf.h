@@ -3,32 +3,35 @@
     Everything you need to implement a printf to serial or similar devices.
     The implemenation is done by stb_printf.h
 
-    Typically you make a puts_t callback to copy to ringbuffer and enable the irq or dma 
+    Typically you make a puts_t callback to copy to ringbuffer and enable the irq or dma
     that empties it, and in the irq/dma handler you pull from teh ringbuffer and switch it off when empty.
 */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <stdarg.h>  // for varargs
+#include <stddef.h>  // for size_t
+#include <stdint.h>  // for uintX_t
 
 struct Ringbuffer {
-    uint8_t  buf[1<<9]; // size must be power of two or '% sizeof(rb->buf)' will not be efficient
-    uint16_t head;      // writes happen here
-    uint16_t tail;      // reads happen here
+    uint8_t  buf[1 << 9];  // size must be power of two or '% sizeof(rb->buf)' cant be done as '& (sizeof(...)-1)'
+    uint16_t head;         // writes happen here
+    uint16_t tail;         // reads happen here
 };
 
-inline uint16_t ringbuffer_avail(struct Ringbuffer *rb) 	{ return rb->head - rb->tail; }                         // 0..size -1
-inline uint16_t ringbuffer_free(struct Ringbuffer *rb) 		{ return sizeof(rb->buf) - (rb->head - rb->tail) - 1; } // size-1 .. 0
-inline int      ringbuffer_empty(struct Ringbuffer *rb) 	{ return rb->head == rb->tail; }
-inline void     ringbuffer_clear(struct Ringbuffer *rb) 	{ rb->head = rb->tail; }
-inline int      ringbuffer_full(struct Ringbuffer *rb) 		{ return ringbuffer_free(rb) < 2; } 					// see note in .c
-inline void     put_head(struct Ringbuffer *rb, uint8_t c)	{ rb->buf[rb->head++ & (sizeof(rb->buf)-1)] = c; }
-inline uint8_t  get_tail(struct Ringbuffer *rb) 			{ return rb->buf[rb->tail++ & (sizeof(rb->buf)-1)]; }
+inline uint16_t ringbuffer_avail(const struct Ringbuffer *rb) { return rb->head - rb->tail; }                         // 0..size -1
+inline uint16_t ringbuffer_free(const struct Ringbuffer *rb) { return sizeof(rb->buf) - (rb->head - rb->tail) - 1; }  // size-1 .. 0
+inline int      ringbuffer_empty(const struct Ringbuffer *rb) { return rb->head == rb->tail; }
+inline int      ringbuffer_full(const struct Ringbuffer *rb) { return (rb->head - rb->tail) >= (int)(sizeof(rb->buf) - 2); }
+inline void     ringbuffer_clear(struct Ringbuffer *rb) { rb->head = rb->tail; }
+inline void     put_head(struct Ringbuffer *rb, uint8_t c) { rb->buf[rb->head++ & (sizeof(rb->buf) - 1)] = c; }
+inline uint8_t  get_tail(struct Ringbuffer *rb) { return rb->buf[rb->tail++ & (sizeof(rb->buf) - 1)]; }
 
 // copies as much of buf[:len] to rb as will fit, returns the number of bytes copied.
 size_t ringbuffer_puts(struct Ringbuffer *rb, const char *buf, size_t len);
 
-// type of callback called by cbprintf() repeatedly.
+// puts_t is the type of a callback called by cbprintf() repeatedly.
+// a puts(..)-like function should try to output buf[0:len], and return
+// the number of characters actually copied out. if the returned value is less
+// than len, cbprintf() will return immediately without attempting to print more.
 typedef size_t puts_t(const char *buf, size_t len);
 
 // cbprintf() interprets fmt as a format string for the variable parameters and calls the callback to
