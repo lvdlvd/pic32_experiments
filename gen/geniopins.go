@@ -51,14 +51,16 @@ var (
 )
 
 var validpins = map[string][]string{
-	"32MK0512GPE064": PIC32MKxxxxMCF064,
-	"32MK0512GPE100": PIC32MKxxxxMCF100,
-	"32MK0512MCF064": PIC32MKxxxxGPE064,
-	"32MK0512MCF100": PIC32MKxxxxGPE100,
-	"32MK1024GPE064": PIC32MKxxxxMCF064,
-	"32MK1024GPE100": PIC32MKxxxxMCF100,
-	"32MK1024MCF064": PIC32MKxxxxGPE064,
-	"32MK1024MCF100": PIC32MKxxxxGPE100,
+	"32MK0512GPE064": PIC32MKxxxxGPE064,
+	"32MK0512GPE100": PIC32MKxxxxGPE100,
+	"32MK0512GPK064": PIC32MKxxxxGPK064,
+	"32MK0512GPK100": PIC32MKxxxxGPK100,
+	"32MK0512MCF064": PIC32MKxxxxMCF064,
+	"32MK0512MCF100": PIC32MKxxxxMCF100,
+	"32MK1024GPE064": PIC32MKxxxxGPE064,
+	"32MK1024GPE100": PIC32MKxxxxGPE100,
+	"32MK1024MCF064": PIC32MKxxxxMCF064,
+	"32MK1024MCF100": PIC32MKxxxxMCF100,
 }
 
 type PinType uint32
@@ -166,7 +168,8 @@ func main() {
 	vp := map[string][]int{}
 	for i, v := range validpins[*fPIC] {
 		for _, vv := range strings.Split(v, "/") {
-			vp[vv] = append(vp[vv], i+1)
+			vvv := strings.TrimSpace(vv)
+			vp[vvv] = append(vp[vvv], i+1)
 		}
 	}
 
