@@ -3,7 +3,7 @@ static inline uintptr_t KVA_TO_PA(void *v) { return (uintptr_t)v & 0x1fffffffUL;
 
 void can1init(enum CANBaudRate bps, struct CanMsg *fifos) {
 
-    C1CONSET = _IC1CON_ON_MASK;  // switch on the module
+    C1CONSET = _C1CON_ON_MASK;  // switch on the module
     
     C1CONbits.REQOP = 0b100;  // config mode
     while (C1CONbits.OPMOD != 0b100)
@@ -42,7 +42,7 @@ void can1init(enum CANBaudRate bps, struct CanMsg *fifos) {
 
 void can2init(enum CANBaudRate bps, struct CanMsg *fifos) {
 
-    C2CONSET = _IC2CON_ON_MASK;  // switch on the module
+    C2CONSET = _C2CON_ON_MASK;  // switch on the module
     
     C2CONbits.REQOP = 0b100;  // config mode
     while (C2CONbits.OPMOD != 0b100)
@@ -82,7 +82,7 @@ void can2init(enum CANBaudRate bps, struct CanMsg *fifos) {
 
 #if 0   // invalid on dev board
 void can3init(enum CANBaudRate bps, struct CanMsg *fifos) {
-    C3CONSET = _IC3CON_ON_MASK;  // switch on the module
+    C3CONSET = _C3CON_ON_MASK;  // switch on the module
     
     C3CONbits.REQOP = 0b100;  // config mode
     while (C3CONbits.OPMOD != 0b100)
@@ -122,7 +122,7 @@ void can3init(enum CANBaudRate bps, struct CanMsg *fifos) {
 
 void can4init(enum CANBaudRate bps, struct CanMsg *fifos) {
 
-    C4CONSET = _IC4CON_ON_MASK;  // switch on the module
+    C4CONSET = _C4CON_ON_MASK;  // switch on the module
     
     C4CONbits.REQOP = 0b100;  // config mode
     while (C4CONbits.OPMOD != 0b100)
